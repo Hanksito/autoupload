@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "skills": {
+    "browser-automation": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "3d7c49c1f4ea5c5bbfcc85e24e9459b19beadfc01acc64a2ff1111d149c8d069"
+    },
+    "clean-code": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "78cc52dda1fa19d4a49b71fa4e9733fe91cb370887a5b91b6e8b4781b56c428a"
+    },
+    "ui-ux-pro-max": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "ac6e3584c7577be083e8a78289b74ee4d466c5f5472fa096ceb5553519daced5"
+    },
+    "vercel-deployment": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "78cc60f7cb2d8e7757e7dc2bbaab74d4e9a6f08cb7199b82da2cffab2f6d4cf0"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "d8e7d3afe37dcc8a97b99ffb5afdb4d0919ae0092ea8b68f44eb201f035e33ac"
+    }
+  }
+}

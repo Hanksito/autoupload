@@ -1,0 +1,474 @@
+{
+    "name": "Perihelion — Master Social Publisher",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "social-publish",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "id": "webhook-trigger",
+            "name": "Webhook Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                240,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [],
+                    "string": [
+                        {
+                            "value1": "={{ $json.body.platforms }}",
+                            "operation": "contains",
+                            "value2": "instagram"
+                        }
+                    ]
+                }
+            },
+            "id": "check-instagram",
+            "name": "Has Instagram?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                480,
+                180
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "string": [
+                        {
+                            "value1": "={{ $json.body.platforms }}",
+                            "operation": "contains",
+                            "value2": "tiktok"
+                        }
+                    ]
+                }
+            },
+            "id": "check-tiktok",
+            "name": "Has TikTok?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                480,
+                360
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "string": [
+                        {
+                            "value1": "={{ $json.body.platforms }}",
+                            "operation": "contains",
+                            "value2": "youtube"
+                        }
+                    ]
+                }
+            },
+            "id": "check-youtube",
+            "name": "Has YouTube?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                480,
+                540
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "string": [
+                        {
+                            "value1": "={{ $json.body.platforms }}",
+                            "operation": "contains",
+                            "value2": "twitter"
+                        }
+                    ]
+                }
+            },
+            "id": "check-twitter",
+            "name": "Has Twitter?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                480,
+                720
+            ]
+        },
+        {
+            "parameters": {
+                "url": "=https://graph.facebook.com/v19.0/{{ $env.INSTAGRAM_BUSINESS_ACCOUNT_ID }}/media",
+                "method": "POST",
+                "bodyParametersUi": {
+                    "parameter": [
+                        {
+                            "name": "media_type",
+                            "value": "REELS"
+                        },
+                        {
+                            "name": "video_url",
+                            "value": "={{ $('Webhook Trigger').item.json.body.mediaUrl }}"
+                        },
+                        {
+                            "name": "caption",
+                            "value": "={{ $('Webhook Trigger').item.json.body.caption }}"
+                        },
+                        {
+                            "name": "access_token",
+                            "value": "={{ $env.INSTAGRAM_ACCESS_TOKEN }}"
+                        }
+                    ]
+                }
+            },
+            "id": "instagram-upload",
+            "name": "Instagram: Upload Reel",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 3,
+            "position": [
+                720,
+                120
+            ]
+        },
+        {
+            "parameters": {
+                "url": "=https://graph.facebook.com/v19.0/{{ $env.INSTAGRAM_BUSINESS_ACCOUNT_ID }}/media_publish",
+                "method": "POST",
+                "bodyParametersUi": {
+                    "parameter": [
+                        {
+                            "name": "creation_id",
+                            "value": "={{ $json.id }}"
+                        },
+                        {
+                            "name": "access_token",
+                            "value": "={{ $env.INSTAGRAM_ACCESS_TOKEN }}"
+                        }
+                    ]
+                }
+            },
+            "id": "instagram-publish",
+            "name": "Instagram: Publish",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 3,
+            "position": [
+                960,
+                120
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://open.tiktokapis.com/v2/post/publish/video/init/",
+                "method": "POST",
+                "headerParametersUi": {
+                    "parameter": [
+                        {
+                            "name": "Authorization",
+                            "value": "=Bearer {{ $env.TIKTOK_ACCESS_TOKEN }}"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json; charset=UTF-8"
+                        }
+                    ]
+                },
+                "bodyParametersUi": {
+                    "parameter": [
+                        {
+                            "name": "post_info.title",
+                            "value": "={{ $('Webhook Trigger').item.json.body.title }}"
+                        },
+                        {
+                            "name": "post_info.description",
+                            "value": "={{ $('Webhook Trigger').item.json.body.caption }}"
+                        },
+                        {
+                            "name": "post_info.privacy_level",
+                            "value": "SELF_ONLY"
+                        },
+                        {
+                            "name": "source_info.source",
+                            "value": "PULL_FROM_URL"
+                        },
+                        {
+                            "name": "source_info.video_url",
+                            "value": "={{ $('Webhook Trigger').item.json.body.mediaUrl }}"
+                        }
+                    ]
+                }
+            },
+            "id": "tiktok-publish",
+            "name": "TikTok: Publish Video",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 3,
+            "position": [
+                720,
+                360
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
+                "method": "POST",
+                "headerParametersUi": {
+                    "parameter": [
+                        {
+                            "name": "Authorization",
+                            "value": "=Bearer {{ $env.YOUTUBE_ACCESS_TOKEN }}"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "bodyParametersUi": {
+                    "parameter": [
+                        {
+                            "name": "snippet",
+                            "value": "={{ { title: $('Webhook Trigger').item.json.body.title + ' #Shorts', description: $('Webhook Trigger').item.json.body.caption, tags: $('Webhook Trigger').item.json.body.hashtags, categoryId: '22' } }}"
+                        },
+                        {
+                            "name": "status",
+                            "value": "={ privacyStatus: 'public' }"
+                        }
+                    ]
+                }
+            },
+            "id": "youtube-publish",
+            "name": "YouTube: Upload Short",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 3,
+            "position": [
+                720,
+                540
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://api.twitter.com/2/tweets",
+                "method": "POST",
+                "authentication": "oAuth1Api",
+                "bodyParametersUi": {
+                    "parameter": [
+                        {
+                            "name": "text",
+                            "value": "={{ $('Webhook Trigger').item.json.body.caption }}"
+                        }
+                    ]
+                }
+            },
+            "id": "twitter-publish",
+            "name": "X/Twitter: Post Tweet",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 3,
+            "position": [
+                720,
+                720
+            ]
+        },
+        {
+            "parameters": {
+                "url": "={{ $env.NEXTJS_URL }}/api/webhook/n8n",
+                "method": "POST",
+                "headerParametersUi": {
+                    "parameter": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        },
+                        {
+                            "name": "x-webhook-secret",
+                            "value": "={{ $env.N8N_WEBHOOK_SECRET }}"
+                        }
+                    ]
+                },
+                "bodyParametersUi": {
+                    "parameter": [
+                        {
+                            "name": "postId",
+                            "value": "={{ $('Webhook Trigger').item.json.body.postId }}"
+                        },
+                        {
+                            "name": "success",
+                            "value": "=true"
+                        },
+                        {
+                            "name": "platformResults",
+                            "value": "={{ { instagram: { success: true }, tiktok: { success: true }, youtube: { success: true } } }}"
+                        }
+                    ]
+                }
+            },
+            "id": "callback-success",
+            "name": "Callback: Notify Next.js (Success)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 3,
+            "position": [
+                1200,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={ \"ok\": true }"
+            },
+            "id": "respond-webhook",
+            "name": "Respond to Webhook",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1,
+            "position": [
+                1440,
+                400
+            ]
+        }
+    ],
+    "connections": {
+        "Webhook Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Has Instagram?",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Has TikTok?",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Has YouTube?",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Has Twitter?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Has Instagram?": {
+            "main": [
+                [
+                    {
+                        "node": "Instagram: Upload Reel",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Has TikTok?": {
+            "main": [
+                [
+                    {
+                        "node": "TikTok: Publish Video",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Has YouTube?": {
+            "main": [
+                [
+                    {
+                        "node": "YouTube: Upload Short",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Has Twitter?": {
+            "main": [
+                [
+                    {
+                        "node": "X/Twitter: Post Tweet",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Instagram: Upload Reel": {
+            "main": [
+                [
+                    {
+                        "node": "Instagram: Publish",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Instagram: Publish": {
+            "main": [
+                [
+                    {
+                        "node": "Callback: Notify Next.js (Success)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "TikTok: Publish Video": {
+            "main": [
+                [
+                    {
+                        "node": "Callback: Notify Next.js (Success)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "YouTube: Upload Short": {
+            "main": [
+                [
+                    {
+                        "node": "Callback: Notify Next.js (Success)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "X/Twitter: Post Tweet": {
+            "main": [
+                [
+                    {
+                        "node": "Callback: Notify Next.js (Success)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Callback: Notify Next.js (Success)": {
+            "main": [
+                [
+                    {
+                        "node": "Respond to Webhook",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    }
+}
