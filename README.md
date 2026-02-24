@@ -1,8 +1,48 @@
 # 🪐 Perihelion — Social Media Scheduler
 
-> Programa y publica Reels en Instagram, TikTok, YouTube Shorts y X (Twitter) simultáneamente, con un panel visual y calendario de publicaciones.
+> Programa y publica Reels en **Instagram**, **TikTok**, **YouTube Shorts** y **X (Twitter)** simultáneamente. Panel visual con calendario, subida a Cloudinary, automatización con n8n y despliegue 100% gratuito en Vercel.
 
-![Stack](https://img.shields.io/badge/Next.js-14-black) ![Vercel](https://img.shields.io/badge/Vercel-free-333) ![n8n](https://img.shields.io/badge/n8n-self--hosted-orange)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs)](https://nextjs.org)
+[![Vercel](https://img.shields.io/badge/Vercel-free-333?logo=vercel)](https://vercel.com)
+[![n8n](https://img.shields.io/badge/n8n-self--hosted-orange?logo=n8n)](https://n8n.io)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+---
+
+## 📋 Tabla de contenidos
+
+- [¿Cómo funciona?](#-cómo-funciona)
+- [Stack tecnológico](#️-stack-tecnológico)
+- [Inicio rápido](#-inicio-rápido)
+- [Variables de entorno](#-variables-de-entorno)
+- [API Reference](#-api-reference)
+- [Modelo de datos](#-modelo-de-datos)
+- [Despliegue en Vercel](#-despliegue-en-vercel)
+- [Configuración de n8n](#-configuración-de-n8n)
+- [Errores y troubleshooting](#-errores-y-troubleshooting)
+- [Límites de las APIs](#-límites-de-las-apis)
+- [Estructura del proyecto](#-estructura-del-proyecto)
+
+---
+
+## 🔄 ¿Cómo funciona?
+
+```
+Usuario sube vídeo → Cloudinary (CDN público)
+     ↓ URL pública del vídeo
+Next.js guarda post en BD con estado "pending" y fecha programada
+     ↓ Vercel Cron (cada minuto)
+¿scheduled_at ≤ NOW? → Trigger al webhook de n8n
+     ↓ n8n ejecuta en paralelo
+┌─────────────────────────────────────┐
+│  Instagram: Graph API → Reels       │
+│  TikTok:    Direct Post API         │
+│  YouTube:   Data API v3 → Shorts    │
+│  X/Twitter: API v2 → Video tweet    │
+└─────────────────────────────────────┘
+     ↓ n8n llama al callback
+BD actualiza status → "published" ✅
+```
 
 ---
 
@@ -10,232 +50,568 @@
 
 | Capa | Tecnología | Coste |
 |------|-----------|-------|
-| Frontend | Next.js 14 (App Router) | Gratis |
+| Frontend | Next.js 16 (App Router) | Gratis |
 | Despliegue | Vercel | Gratis |
-| Base de datos | Vercel Postgres | Gratis |
-| Almacenamiento vídeos | Cloudinary | Gratis (25GB) |
+| Base de datos | Neon / Vercel Postgres | Gratis |
+| Almacenamiento vídeos | Cloudinary | Gratis (25 GB) |
 | Automatización | n8n (self-hosted) | Gratis |
-| Despliegue n8n | Railway o Render | Gratis |
+| Despliegue n8n | Railway | Gratis |
 
 ---
 
-## ⚡ Inicio rápido (desarrollo local)
+## ⚡ Inicio rápido
+
+### Prerrequisitos
+
+- Node.js 18+
+- Cuenta en [Cloudinary](https://cloudinary.com) (gratis)
+- Cuenta en [Neon](https://neon.tech) (gratis)
+- n8n en [Railway](https://railway.app) (gratis) o local con Docker
+
+### Instalación
 
 ```bash
-# 1. Instala dependencias
+# 1. Clona el repositorio
+git clone https://github.com/Hanksito/autoupload.git
+cd autoupload
+
+# 2. Instala dependencias
 npm install
 
-# 2. Crea el archivo de configuración
+# 3. Copia y rellena las variables de entorno
 cp .env.example .env.local
-# → Edita .env.local con tus credenciales (ver sección abajo)
 
-# 3. Inicia el servidor de desarrollo
+# 4. Inicia el servidor de desarrollo
 npm run dev
 ```
 
-Abre [http://localhost:3000](http://localhost:3000)
+Abre [http://localhost:3000](http://localhost:3000) — verás el dashboard con calendario.
+
+> **Nota:** Sin `DATABASE_URL` configurada verás un error en consola al cargar posts. Es normal — la UI sigue funcionando.
 
 ---
 
-## 🔑 Variables de entorno (`.env.local`)
+## 🔑 Variables de entorno
 
 Copia `.env.example` como `.env.local` y rellena cada sección:
 
----
+### 1. Base de datos — Neon / Vercel Postgres
 
-### 1. Vercel Postgres (Neon) — Base de datos
+> **Obtener:** [neon.tech](https://neon.tech) → Create Project → Connection String  
+> O en [vercel.com](https://vercel.com) → Tu proyecto → Storage → Connect Database → Postgres
 
-> **Dónde obtenerla:** [vercel.com](https://vercel.com) → Tu proyecto → Storage → Connect Database → Postgres (Neon)
-> O directamente en [neon.tech](https://neon.tech) → Create Project → Connection String
-
-| Variable | Descripción |
-|----------|-------------|
-| `DATABASE_URL` | Connection string completa de Neon/Vercel Postgres (ej: `postgres://user:pass@host.neon.tech/db?sslmode=require`) |
+| Variable | Tipo | Descripción |
+|----------|------|-------------|
+| `DATABASE_URL` | string | Connection string de Neon (`postgres://user:pass@host.neon.tech/db?sslmode=require`) |
 
 ---
 
 ### 2. Cloudinary — Almacenamiento de vídeos
 
-> **Dónde obtenerlas:** [cloudinary.com](https://cloudinary.com) → Dashboard → Account Details
-> Registro gratuito, no se necesita tarjeta de crédito. Plan Free: 25GB y 25GB de ancho de banda/mes.
+> **Obtener:** [cloudinary.com](https://cloudinary.com) → Dashboard → Account Details  
+> Plan Free: 25 GB almacenamiento + 25 GB ancho de banda/mes. Sin tarjeta de crédito.
 
-| Variable | Descripción |
-|----------|-------------|
-| `CLOUDINARY_CLOUD_NAME` | Nombre de tu cloud (ej: `mi-nombre`) |
-| `CLOUDINARY_API_KEY` | API Key del Dashboard |
-| `CLOUDINARY_API_SECRET` | API Secret del Dashboard |
+| Variable | Tipo | Descripción |
+|----------|------|-------------|
+| `CLOUDINARY_CLOUD_NAME` | string | Nombre de tu cloud (ej: `mi-empresa`) |
+| `CLOUDINARY_API_KEY` | string | API Key del Dashboard |
+| `CLOUDINARY_API_SECRET` | string | API Secret del Dashboard |
 
 ---
 
 ### 3. n8n — Motor de automatización
 
-> **Dónde obtenerlas:** Al desplegar n8n en Railway/Render, crea un nodo Webhook en tu workflow.
-> El `N8N_WEBHOOK_SECRET` lo defines tú — pon cualquier cadena aleatoria larga (mínimo 32 caracteres).
+> **Obtener:** URL del webhook al crear el nodo Webhook en tu workflow de n8n.  
+> `N8N_WEBHOOK_SECRET` lo defines tú — mínimo 32 caracteres aleatorios.  
+> Genera uno con: `openssl rand -hex 32`
 
-| Variable | Descripción |
-|----------|-------------|
-| `N8N_WEBHOOK_URL` | URL del webhook trigger en tu n8n (ej: `https://tu-n8n.railway.app/webhook/social-publish`) |
-| `N8N_WEBHOOK_SECRET` | Secreto compartido entre Next.js y n8n para seguridad |
-
----
-
-### 4. Cron Secret — Seguridad del job de publicación
-
-> Genera uno con: `openssl rand -hex 32` o [randomkeygen.com](https://randomkeygen.com)
-> En Vercel, este header se envía automáticamente en las llamadas de cron.
-
-| Variable | Descripción |
-|----------|-------------|
-| `CRON_SECRET` | Token aleatorio para proteger `/api/cron/publish` |
+| Variable | Tipo | Descripción |
+|----------|------|-------------|
+| `N8N_WEBHOOK_URL` | string | URL del trigger (ej: `https://tu-n8n.railway.app/webhook/social-publish`) |
+| `N8N_WEBHOOK_SECRET` | string | Secreto compartido para autenticar las llamadas entre Next.js ↔ n8n |
 
 ---
 
-### 5. Instagram — Facebook Graph API ✅ Gratis
+### 4. Cron — Seguridad del job de publicación
+
+> **Obtener:** Genera con `openssl rand -hex 32` o [randomkeygen.com](https://randomkeygen.com)  
+> Vercel lo envía automáticamente en el header `Authorization: Bearer` en cada ejecución del cron.
+
+| Variable | Tipo | Descripción |
+|----------|------|-------------|
+| `CRON_SECRET` | string | Token aleatorio para proteger `GET /api/cron/publish` |
+
+---
+
+### 5. Instagram ✅ Gratis
 
 > **Requisitos:**
-> - Cuenta de Instagram **Business** o **Creator**
-> - App en [developers.facebook.com](https://developers.facebook.com) con permisos: `instagram_basic`, `instagram_content_publish`
+> - Cuenta Instagram **Business** o **Creator**
+> - App en [developers.facebook.com](https://developers.facebook.com)
+> - Permisos: `instagram_basic`, `instagram_content_publish`
 >
-> **Dónde obtenerlas:** developers.facebook.com → Tu App → Instagram → Token de acceso de larga duración
+> **Obtener:** developers.facebook.com → Tu App → Instagram → Token de acceso de larga duración (60 días)
 
-| Variable | Descripción |
-|----------|-------------|
-| `INSTAGRAM_ACCESS_TOKEN` | Token de acceso de la cuenta (larga duración, válido 60 días) |
-| `INSTAGRAM_BUSINESS_ACCOUNT_ID` | ID de la cuenta profesional de Instagram |
+| Variable | Tipo | Descripción |
+|----------|------|-------------|
+| `INSTAGRAM_ACCESS_TOKEN` | string | Token OAuth (larga duración, renovar cada 60 días) |
+| `INSTAGRAM_BUSINESS_ACCOUNT_ID` | string | ID numérico de tu cuenta profesional (ej: `17841400000000000`) |
 
 ---
 
-### 6. TikTok — Direct Post API ✅ Gratis (con aprobación)
+### 6. TikTok ✅ Gratis (con aprobación de app)
 
 > **Requisitos:**
 > - Cuenta en [developers.tiktok.com](https://developers.tiktok.com)
 > - Solicitar acceso a **"Content Posting API"**
-> - Sin auditoría: posts en privado, máx. 5 usuarios
-> - Con auditoría aprobada: posts públicos, hasta 15 vídeos/día
 >
-> **Dónde obtenerlas:** developers.tiktok.com → Tu App → Credentials
+> ⚠️ Sin auditoría: posts privados, máx. 5 usuarios.  
+> ✅ Con auditoría aprobada: posts públicos, hasta 15 vídeos/día.
 
-| Variable | Descripción |
-|----------|-------------|
-| `TIKTOK_CLIENT_KEY` | Client Key de tu app |
-| `TIKTOK_CLIENT_SECRET` | Client Secret de tu app |
-| `TIKTOK_ACCESS_TOKEN` | Access Token del usuario autenticado |
-
----
-
-### 7. X / Twitter — API v2 ⚠️ Limitado en tier gratuito
-
-> **Coste:** Tier gratuito: 1.500 tweets/mes | Basic ($100/mes): 3.000 tweets/mes
-> **Dónde obtenerlas:** [developer.twitter.com](https://developer.twitter.com) → Tu proyecto → Keys and Tokens
-
-| Variable | Descripción |
-|----------|-------------|
-| `TWITTER_API_KEY` | Consumer Key de tu app |
-| `TWITTER_API_SECRET` | Consumer Secret de tu app |
-| `TWITTER_ACCESS_TOKEN` | Access Token del usuario |
-| `TWITTER_ACCESS_TOKEN_SECRET` | Access Token Secret del usuario |
-| `TWITTER_BEARER_TOKEN` | Bearer Token (para operaciones de lectura) |
+| Variable | Tipo | Descripción |
+|----------|------|-------------|
+| `TIKTOK_CLIENT_KEY` | string | Client Key de tu app |
+| `TIKTOK_CLIENT_SECRET` | string | Client Secret de tu app |
+| `TIKTOK_ACCESS_TOKEN` | string | Access Token del usuario autenticado (OAuth 2.0) |
 
 ---
 
-### 8. YouTube — YouTube Data API v3 ✅ Gratis
+### 7. X / Twitter ⚠️ Tier gratuito muy limitado
+
+> **Coste:** Free: 1.500 tweets/mes | Basic: $100/mes → 3.000 tweets/mes  
+> **Obtener:** [developer.twitter.com](https://developer.twitter.com) → Tu app → Keys and Tokens
+
+| Variable | Tipo | Descripción |
+|----------|------|-------------|
+| `TWITTER_API_KEY` | string | Consumer Key |
+| `TWITTER_API_SECRET` | string | Consumer Secret |
+| `TWITTER_ACCESS_TOKEN` | string | Access Token del usuario |
+| `TWITTER_ACCESS_TOKEN_SECRET` | string | Access Token Secret del usuario |
+| `TWITTER_BEARER_TOKEN` | string | Bearer Token (lectura) |
+
+---
+
+### 8. YouTube ✅ Gratis
 
 > **Requisitos:**
-> - Cuenta en [console.cloud.google.com](https://console.cloud.google.com)
-> - Activar **YouTube Data API v3** en tu proyecto de Google Cloud
-> - Crear credenciales **OAuth 2.0** → Aplicación web
-> - Límite gratuito: 10.000 unidades/día (~6 vídeos/día)
+> - Proyecto en [console.cloud.google.com](https://console.cloud.google.com)
+> - Activar **YouTube Data API v3**
+> - Crear credenciales **OAuth 2.0 → Aplicación web**
 >
-> **Guía para el Refresh Token:** [OAuth 2.0 Playground](https://developers.google.com/oauthplayground) → Selecciona YouTube Data API v3 → Autoriza → Copia el Refresh Token
+> **Obtener el Refresh Token:** [OAuth 2.0 Playground](https://developers.google.com/oauthplayground) → YouTube Data API v3 → Autoriza → Exchange authorization code for tokens → copia `refresh_token`
 
-| Variable | Descripción |
-|----------|-------------|
-| `YOUTUBE_CLIENT_ID` | Client ID OAuth 2.0 |
-| `YOUTUBE_CLIENT_SECRET` | Client Secret OAuth 2.0 |
-| `YOUTUBE_REFRESH_TOKEN` | Refresh Token del usuario (largo plazo) |
+| Variable | Tipo | Descripción |
+|----------|------|-------------|
+| `YOUTUBE_CLIENT_ID` | string | Client ID OAuth 2.0 (termina en `.apps.googleusercontent.com`) |
+| `YOUTUBE_CLIENT_SECRET` | string | Client Secret OAuth 2.0 |
+| `YOUTUBE_REFRESH_TOKEN` | string | Refresh Token de larga duración del usuario |
+
+---
+
+## 📡 API Reference
+
+### Autenticación interna
+
+Los endpoints del cron y del webhook usan autenticación por header secreto:
+
+| Endpoint | Header |
+|----------|--------|
+| `GET /api/cron/publish` | `Authorization: Bearer {CRON_SECRET}` |
+| `POST /api/webhook/n8n` | `x-webhook-secret: {N8N_WEBHOOK_SECRET}` |
+
+---
+
+### `GET /api/posts`
+
+Lista todos los posts programados ordenados por fecha.
+
+**Respuesta 200:**
+```json
+{
+  "posts": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "title": "Mi primer Reel",
+      "description": "Texto del caption",
+      "hashtags": ["viral", "reels", "fyp"],
+      "media_url": "https://res.cloudinary.com/mi-cloud/video/upload/v1/social-scheduler/mi-video.mp4",
+      "media_public_id": "social-scheduler/mi-video",
+      "platforms": ["instagram", "tiktok", "youtube"],
+      "scheduled_at": "2026-02-25T10:00:00.000Z",
+      "status": "pending",
+      "error_message": null,
+      "platform_results": null,
+      "created_at": "2026-02-24T09:00:00.000Z",
+      "updated_at": "2026-02-24T09:00:00.000Z"
+    }
+  ]
+}
+```
+
+**Ejemplo (cURL):**
+```bash
+curl https://tu-app.vercel.app/api/posts
+```
+
+**Ejemplo (JavaScript):**
+```js
+const res = await fetch('/api/posts');
+const { posts } = await res.json();
+```
+
+---
+
+### `POST /api/posts`
+
+Crea un post programado.
+
+**Body (JSON):**
+```json
+{
+  "title": "Mi primer Reel",
+  "description": "Caption del post",
+  "hashtags": ["viral", "reels"],
+  "mediaUrl": "https://res.cloudinary.com/mi-cloud/video/upload/v1/social-scheduler/video.mp4",
+  "mediaPublicId": "social-scheduler/1708768000-video",
+  "platforms": ["instagram", "tiktok", "youtube"],
+  "scheduledAt": "2026-02-25T10:00:00.000Z"
+}
+```
+
+| Campo | Tipo | Req. | Descripción |
+|-------|------|------|-------------|
+| `title` | string | ✅ | Título (usado en YouTube, máx. 100 chars) |
+| `description` | string | ❌ | Caption/descripción del post |
+| `hashtags` | string[] | ❌ | Sin `#`, se añade automáticamente |
+| `mediaUrl` | string | ✅ | URL pública del vídeo en Cloudinary |
+| `mediaPublicId` | string | ❌ | Public ID de Cloudinary (para borrar si hace falta) |
+| `platforms` | string[] | ✅ | Uno o varios de: `instagram`, `tiktok`, `youtube`, `twitter` |
+| `scheduledAt` | ISO 8601 | ✅ | Debe ser en el futuro (mínimo +5 min) |
+
+**Respuesta 201:**
+```json
+{
+  "post": { "id": "550e8400-...", "status": "pending", "..." }
+}
+```
+
+**Errores:**
+
+| Código | Error | Causa |
+|--------|-------|-------|
+| `400` | `Missing required fields` | Falta `title`, `mediaUrl`, `platforms` o `scheduledAt` |
+| `400` | `Scheduled time must be in the future` | `scheduledAt` es pasado |
+| `500` | `Failed to create post` | Error de BD |
+
+**Ejemplo (cURL):**
+```bash
+curl -X POST https://tu-app.vercel.app/api/posts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Mi Reel",
+    "description": "Mira este vídeo!",
+    "hashtags": ["fyp", "viral"],
+    "mediaUrl": "https://res.cloudinary.com/mi-cloud/video/upload/v1/social-scheduler/video.mp4",
+    "platforms": ["instagram", "tiktok"],
+    "scheduledAt": "2026-02-25T10:00:00.000Z"
+  }'
+```
+
+---
+
+### `DELETE /api/posts/:id`
+
+Elimina un post (solo si está en estado `pending`).
+
+**Respuesta 200:**
+```json
+{ "success": true }
+```
+
+**Errores:**
+
+| Código | Error | Causa |
+|--------|-------|-------|
+| `404` | `Post not found` | ID no existe |
+| `400` | `Cannot delete an already published post` | El post ya fue publicado |
+
+---
+
+### `POST /api/upload`
+
+Sube un vídeo a Cloudinary y devuelve la URL pública.
+
+**Body:** `multipart/form-data` con campo `file` (vídeo MP4/MOV/WebM, máx 500 MB)
+
+**Respuesta 200:**
+```json
+{
+  "url": "https://res.cloudinary.com/mi-cloud/video/upload/v1/social-scheduler/1708768000-video.mp4",
+  "publicId": "social-scheduler/1708768000-video"
+}
+```
+
+**Errores:**
+
+| Código | Error | Causa |
+|--------|-------|-------|
+| `400` | `No file provided` | Falta el campo `file` |
+| `400` | `Invalid file type` | No es MP4, MOV ni WebM |
+| `400` | `File too large` | Supera 500 MB |
+| `500` | `Failed to upload video` | Error de Cloudinary |
+
+**Ejemplo (JavaScript):**
+```js
+const formData = new FormData();
+formData.append('file', videoFile);
+
+const res = await fetch('/api/upload', { method: 'POST', body: formData });
+const { url, publicId } = await res.json();
+```
+
+---
+
+### `GET /api/cron/publish` 🔒
+
+Ejecutado por Vercel Cron cada minuto. Busca posts pendientes y los dispara a n8n.
+
+**Header requerido:**
+```
+Authorization: Bearer {CRON_SECRET}
+```
+
+**Respuesta 200:**
+```json
+{
+  "message": "Processed 2 posts, triggered 2 successfully",
+  "processed": 2,
+  "successful": 2
+}
+```
+
+---
+
+### `POST /api/webhook/n8n` 🔒
+
+n8n llama a este endpoint tras publicar, para actualizar el estado en BD.
+
+**Header requerido:**
+```
+x-webhook-secret: {N8N_WEBHOOK_SECRET}
+```
+
+**Body:**
+```json
+{
+  "postId": "550e8400-e29b-41d4-a716-446655440000",
+  "success": true,
+  "platformResults": {
+    "instagram": { "success": true, "url": "https://www.instagram.com/p/ABC123/" },
+    "tiktok":    { "success": true, "url": "https://www.tiktok.com/@user/video/123" },
+    "youtube":   { "success": false, "error": "quota exceeded" }
+  }
+}
+```
+
+---
+
+## 🗄️ Modelo de datos
+
+### Tabla `scheduled_posts`
+
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| `id` | UUID | Identificador único (auto-generado) |
+| `title` | TEXT | Título del post |
+| `description` | TEXT | Caption / descripción |
+| `hashtags` | TEXT[] | Array de hashtags sin `#` |
+| `media_url` | TEXT | URL pública del vídeo en Cloudinary |
+| `media_public_id` | TEXT | Public ID de Cloudinary |
+| `platforms` | TEXT[] | Plataformas destino |
+| `scheduled_at` | TIMESTAMPTZ | Fecha/hora de publicación programada |
+| `status` | TEXT | `pending` \| `publishing` \| `published` \| `failed` |
+| `error_message` | TEXT | Mensaje de error (si falló) |
+| `platform_results` | JSONB | Resultado por plataforma tras publicar |
+| `created_at` | TIMESTAMPTZ | Fecha de creación |
+| `updated_at` | TIMESTAMPTZ | Última actualización |
+
+### Estados del post
+
+```
+pending → publishing → published
+                    ↘ failed
+```
+
+| Estado | Descripción |
+|--------|-------------|
+| `pending` | Esperando la fecha programada |
+| `publishing` | Cron lo detectó, n8n está publicando |
+| `published` | Publicado en todas las plataformas |
+| `failed` | Error al publicar (ver `error_message`) |
 
 ---
 
 ## 🚀 Despliegue en Vercel
 
+### Opción A — CLI (recomendado)
+
 ```bash
-# Instala Vercel CLI si no lo tienes
 npm i -g vercel
-
-# Despliega
 vercel
-
-# O conecta tu repo de GitHub en vercel.com (recomendado)
-# Vercel detecta Next.js automáticamente
 ```
 
-**Tras desplegar:**
-1. Ve a tu proyecto en Vercel → Settings → Environment Variables
-2. Añade todas las variables de `.env.local`
-3. El cron (`vercel.json`) se activa automáticamente cada minuto
+### Opción B — Conectar repo GitHub
+
+1. Ve a [vercel.com/new](https://vercel.com/new)
+2. Importa el repositorio `Hanksito/autoupload`
+3. Vercel detecta Next.js automáticamente → clic en **Deploy**
+
+### Configurar variables de entorno
+
+Tras desplegar: **Settings → Environment Variables** → añade todas las del `.env.local`.
+
+### Cron automático
+
+El archivo `vercel.json` ya configura el cron para ejecutarse **cada minuto**:
+
+```json
+{
+  "crons": [{ "path": "/api/cron/publish", "schedule": "* * * * *" }]
+}
+```
+
+> ⚠️ Los crons de Vercel requieren un plan Pro para frecuencias < 1h. En el plan Free, cambia a `"0 * * * *"` (cada hora).
 
 ---
 
 ## 🤖 Configuración de n8n
 
-### Despliegue en Railway (gratis)
-1. Ve a [railway.app](https://railway.app) → New Project → Deploy from Template → busca "n8n"
-2. Anota la URL pública que Railway te asigna
-3. Entra al panel de n8n → Workflows → Crea uno nuevo
+### 1. Despliegue en Railway (gratis)
 
-### Workflows necesarios
-Importa los workflows de la carpeta `/n8n-workflows/` (los encontrarás en el repo):
+1. Ve a [railway.app](https://railway.app) → **New Project** → **Deploy from Template** → busca `n8n`
+2. Anota la URL pública: `https://tu-n8n.railway.app`
+3. Accede al panel de n8n con esa URL
 
-| Archivo | Plataforma |
-|---------|-----------|
-| `instagram-reel.json` | Instagram Reels |
-| `tiktok-video.json` | TikTok |
-| `youtube-short.json` | YouTube Shorts |
-| `twitter-video.json` | X / Twitter (opcional) |
+### 2. Importar el workflow
 
-Cada workflow:
-1. Recibe el webhook de Next.js con los datos del post
-2. Publica en la red social correspondiente
-3. Llama a `/api/webhook/n8n` con el resultado (éxito/error)
+1. En n8n: **Workflows → Import from File**
+2. Selecciona `n8n-workflows/social-publisher.json` del repositorio
+3. El workflow tiene estas ramas en paralelo:
+
+```
+Webhook Trigger
+├── ¿platforms incluye "instagram"? → Instagram: Upload Reel → Publish
+├── ¿platforms incluye "tiktok"?    → TikTok: Publish Video
+├── ¿platforms incluye "youtube"?   → YouTube: Upload Short
+└── ¿platforms incluye "twitter"?   → X/Twitter: Post Tweet
+                                              ↓ (todas)
+                               Callback: POST /api/webhook/n8n
+```
+
+### 3. Variables de entorno en n8n
+
+En Railway → Variables, añade:
+
+| Variable | Valor |
+|----------|-------|
+| `NEXTJS_URL` | URL de tu app en Vercel (ej: `https://autoupload.vercel.app`) |
+| `N8N_WEBHOOK_SECRET` | El mismo valor que en Vercel |
+| `INSTAGRAM_ACCESS_TOKEN` | Token de Instagram |
+| `INSTAGRAM_BUSINESS_ACCOUNT_ID` | ID de cuenta |
+| `TIKTOK_ACCESS_TOKEN` | Token de TikTok |
+| `YOUTUBE_ACCESS_TOKEN` | Token de YouTube (generado con Refresh Token) |
+
+### 4. Copiar la URL del webhook
+
+En n8n → abre el workflow → clic en el nodo **Webhook Trigger** → copia la **Production URL**.  
+Esa URL es tu `N8N_WEBHOOK_URL` en Vercel.
+
+---
+
+## 🐛 Errores y troubleshooting
+
+### "Failed to fetch posts" en consola
+
+**Causa:** No está configurada `DATABASE_URL` en `.env.local`.  
+**Solución:** Crea una BD en [neon.tech](https://neon.tech) y añade la variable.
+
+---
+
+### Posts en estado `publishing` que no avanzan
+
+**Causa:** n8n no pudo llamar al callback `/api/webhook/n8n`.  
+**Pasos:**
+1. Revisa los logs del workflow en n8n
+2. Verifica que `NEXTJS_URL` en n8n apunta a la URL correcta de Vercel
+3. Verifica que `N8N_WEBHOOK_SECRET` coincide en ambos lados
+
+---
+
+### Error de Cloudinary al subir vídeo
+
+**Causa:** Credenciales incorrectas o vídeo demasiado grande.  
+**Solución:**
+- Verifica `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y `CLOUDINARY_API_SECRET`
+- El vídeo debe ser MP4/MOV/WebM y pesar menos de 500 MB
+
+---
+
+### Instagram devuelve error 400
+
+**Causa más común:** El token de acceso expiró (caduca cada 60 días).  
+**Solución:** Renueva el token en developers.facebook.com → Tu App → Instagram → Generar nuevo token.
+
+---
+
+### El cron no publica en Vercel Free
+
+**Causa:** Vercel Free solo permite crons con frecuencia mínima de 1 vez/hora.  
+**Solución:** Cambia `vercel.json` a `"0 * * * *"` o actualiza a Vercel Pro.
+
+---
+
+## 📊 Límites de las APIs
+
+| Plataforma | Límite | Notas |
+|-----------|--------|-------|
+| Instagram | 100 posts/24h | Requiere cuenta Business/Creator |
+| TikTok | 15 vídeos/día | Solo con app auditada; sin auditar: privado |
+| YouTube | ~6 vídeos/día | 10.000 unidades/día; subir vídeo = 1.600 unidades |
+| X/Twitter | 1.500 tweets/**mes** | Free tier muy limitado; Basic = $100/mes |
 
 ---
 
 ## 📁 Estructura del proyecto
 
 ```
-src/
-├── app/
-│   ├── page.tsx                    # Dashboard con calendario
-│   ├── new/page.tsx                # Formulario de nuevo Reel
-│   ├── globals.css                 # Estilos globales
-│   └── api/
-│       ├── posts/route.ts          # GET, POST posts
-│       ├── posts/[id]/route.ts     # GET, DELETE post por ID
-│       ├── upload/route.ts         # Subida de vídeo a Cloudinary
-│       ├── cron/publish/route.ts   # Job que revisa posts pendientes
-│       └── webhook/n8n/route.ts    # Callback de n8n al publicar
-├── components/
-│   ├── PostCard.tsx                # Tarjeta de post individual
-│   └── CalendarView.tsx            # Calendario mensual
-└── lib/
-    ├── db.ts                       # Cliente Vercel Postgres + CRUD
-    ├── cloudinary.ts               # Helper de subida de vídeos
-    └── n8n.ts                      # Trigger de webhooks n8n
+perihelion-orbit/
+├── src/
+│   ├── app/
+│   │   ├── page.tsx                  # Dashboard con estadísticas y calendario
+│   │   ├── new/page.tsx              # Formulario de nuevo Reel
+│   │   ├── globals.css               # Diseño oscuro, glassmorphism
+│   │   └── api/
+│   │       ├── posts/route.ts        # GET, POST /api/posts
+│   │       ├── posts/[id]/route.ts   # DELETE /api/posts/:id
+│   │       ├── upload/route.ts       # POST /api/upload (→ Cloudinary)
+│   │       ├── cron/publish/route.ts # GET /api/cron/publish (Vercel Cron)
+│   │       └── webhook/n8n/route.ts  # POST /api/webhook/n8n (callback)
+│   ├── components/
+│   │   ├── CalendarView.tsx          # Calendario mensual interactivo
+│   │   └── PostCard.tsx              # Tarjeta de post con estado
+│   └── lib/
+│       ├── db.ts                     # Neon Postgres client + CRUD
+│       ├── cloudinary.ts             # Upload/delete de vídeos
+│       └── n8n.ts                    # Trigger webhook n8n
+├── n8n-workflows/
+│   └── social-publisher.json         # Workflow n8n listo para importar
+├── vercel.json                       # Cron cada minuto
+├── .env.example                      # Plantilla de variables documentada
+└── README.md                         # Este archivo
 ```
-
----
-
-## 📋 Límites de las APIs (resumen)
-
-| Plataforma | Límite gratuito |
-|-----------|----------------|
-| Instagram | 100 posts/24h vía API |
-| TikTok | 15 vídeos/día (con app auditada) |
-| YouTube | ~6 vídeos/día (10.000 unidades) |
-| X/Twitter | 1.500 tweets/mes (tier gratuito) |
 
 ---
 
 ## 📄 Licencia
 
-MIT — Úsalo libremente.
+MIT — Úsalo, modifícalo y compártelo libremente.
