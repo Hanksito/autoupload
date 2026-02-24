@@ -451,28 +451,72 @@ pending → publishing → published
 
 ---
 
-## 🚀 Despliegue en Vercel
+## 🚀 Despliegue en Vercel (desde GitHub)
 
-### Opción A — CLI (recomendado)
+### Paso 1 — Importar el repositorio
 
-```bash
-npm i -g vercel
-vercel
-```
+1. Ve a **[vercel.com/new](https://vercel.com/new)** e inicia sesión con tu cuenta de GitHub
+2. Haz clic en **"Add New Project"**
+3. Busca y selecciona el repositorio **`autoupload`** → clic en **"Import"**
+4. Vercel detecta Next.js automáticamente — **no cambies nada** en la configuración del framework
 
-### Opción B — Conectar repo GitHub
+---
 
-1. Ve a [vercel.com/new](https://vercel.com/new)
-2. Importa el repositorio `Hanksito/autoupload`
-3. Vercel detecta Next.js automáticamente → clic en **Deploy**
+### Paso 2 — Añadir las variables de entorno (⚠️ ANTES de hacer Deploy)
 
-### Configurar variables de entorno
+En la pantalla de configuración del proyecto, antes de pulsar Deploy, despliega la sección **"Environment Variables"** y añade una a una todas las variables:
 
-Tras desplegar: **Settings → Environment Variables** → añade todas las del `.env.local`.
+| Variable | Dónde obtenerla |
+|----------|----------------|
+| `DATABASE_URL` | [neon.tech](https://neon.tech) → Tu proyecto → Dashboard → Connection String |
+| `CLOUDINARY_CLOUD_NAME` | [cloudinary.com](https://cloudinary.com) → Dashboard → Account Details |
+| `CLOUDINARY_API_KEY` | Mismo Dashboard de Cloudinary |
+| `CLOUDINARY_API_SECRET` | Mismo Dashboard de Cloudinary |
+| `N8N_WEBHOOK_URL` | n8n → Abre el workflow → nodo Webhook → copia la **Production URL** |
+| `N8N_WEBHOOK_SECRET` | Invéntalo tú — mínimo 32 chars aleatorios (`openssl rand -hex 32`) |
+| `CRON_SECRET` | Invéntalo tú — mínimo 32 chars aleatorios (`openssl rand -hex 32`) |
+| `INSTAGRAM_ACCESS_TOKEN` | [developers.facebook.com](https://developers.facebook.com) → Tu App → Instagram |
+| `INSTAGRAM_BUSINESS_ACCOUNT_ID` | Mismo panel de Meta → ID numérico de la cuenta |
+| `TIKTOK_CLIENT_KEY` | [developers.tiktok.com](https://developers.tiktok.com) → Tu App → Credentials |
+| `TIKTOK_CLIENT_SECRET` | Mismo panel de TikTok |
+| `TIKTOK_ACCESS_TOKEN` | OAuth flow de TikTok |
+| `TWITTER_API_KEY` | [developer.twitter.com](https://developer.twitter.com) → Tu App → Keys and Tokens |
+| `TWITTER_API_SECRET` | Mismo panel de Twitter |
+| `TWITTER_ACCESS_TOKEN` | Mismo panel de Twitter |
+| `TWITTER_ACCESS_TOKEN_SECRET` | Mismo panel de Twitter |
+| `TWITTER_BEARER_TOKEN` | Mismo panel de Twitter |
+| `YOUTUBE_CLIENT_ID` | [console.cloud.google.com](https://console.cloud.google.com) → Credenciales OAuth 2.0 |
+| `YOUTUBE_CLIENT_SECRET` | Mismo panel de Google Cloud |
+| `YOUTUBE_REFRESH_TOKEN` | [OAuth 2.0 Playground](https://developers.google.com/oauthplayground) → YouTube Data API v3 |
 
-### Cron automático
+> 💡 **Tip:** No necesitas rellenar TODAS las variables desde el primer día. Empieza solo con las que vayas a usar (`DATABASE_URL`, `CLOUDINARY_*`, `N8N_*`, `CRON_SECRET`) y añade las de las redes sociales cuando las tengas.
 
-El archivo `vercel.json` ya configura el cron para ejecutarse **cada minuto**:
+---
+
+### Paso 3 — Hacer el Deploy
+
+Haz clic en **"Deploy"** y espera ~1 minuto. Vercel construirá y desplegará la app automáticamente.
+
+Tras el deploy tendrás una URL del tipo: `https://autoupload-xxxx.vercel.app`
+
+---
+
+### Paso 4 — Añadir/cambiar variables después del deploy
+
+Si necesitas añadir o modificar variables de entorno más adelante:
+
+1. Ve a **[vercel.com/dashboard](https://vercel.com/dashboard)** → selecciona el proyecto **autoupload**
+2. Clic en la pestaña **"Settings"**
+3. En el menú lateral, clic en **"Environment Variables"**
+4. Añade o edita las variables que necesites
+5. **⚠️ Importante:** Después de guardar, haz un nuevo deploy para que los cambios tengan efecto:
+   - Settings → Deployments → clic en los tres puntos del último deploy → **"Redeploy"**
+
+---
+
+### Paso 5 — Verificar el cron
+
+El cron está definido en `vercel.json`:
 
 ```json
 {
@@ -480,7 +524,12 @@ El archivo `vercel.json` ya configura el cron para ejecutarse **cada minuto**:
 }
 ```
 
-> ⚠️ Los crons de Vercel requieren un plan Pro para frecuencias < 1h. En el plan Free, cambia a `"0 * * * *"` (cada hora).
+Para verificarlo en Vercel: **Settings → Cron Jobs** — deberías ver el job listado.
+
+> ⚠️ **Plan Free de Vercel:** Los crons con frecuencia `* * * * *` (cada minuto) requieren plan **Pro**.  
+> En el plan **Free**, cambia el schedule a `"0 * * * *"` (cada hora) en `vercel.json` y vuelve a hacer deploy.
+
+
 
 ---
 
